@@ -12,6 +12,6 @@
   (vary-first-char (class-name s)
                    lower-case))
 
-(def constant-name
-  (comp str/upper-case
-        #(.replace % "-" "_")))
+(defn constant-name [s]
+  (str/upper-case
+   (.replace (name s) "-" "_")))

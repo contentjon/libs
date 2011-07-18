@@ -35,12 +35,6 @@
 (defmulti config (fn [o  _]
                    (m/type o)))
 
-(defn value [o]
-  (get o :value))
-
-(defn set-value [o val]
-  (set o :value val))
-
 (defmethod get :default
   [o key]
   (get1 o key))

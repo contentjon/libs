@@ -8,7 +8,7 @@
               log
               predicates
               translate)
-        (libs.java reflect))
+        (libs.java gen reflect))
   (:require [clojure.java.io :as io]
             [clojure.string  :as str]
             [libs.java.meta  :as m])
@@ -17,6 +17,7 @@
                          IFn
                          IPersistentMap)
            (java.awt BorderLayout
+                     Color
                      Component
                      Container
                      Dimension
@@ -67,6 +68,7 @@
                         RowFilter
                         ScrollPaneConstants
                         SortOrder
+                        SwingConstants
                         SwingUtilities
                         ToolTipManager
                         UIManager)
@@ -229,11 +231,46 @@
   (config (JScrollPane. arg)
           other-args))
 
+(def awt-colors
+  [:white :light-gray :gray :dark-gray :black :red
+   :pink :orange :yellow :green :magenta :cyan :blue])
+
+(defmacro def-color-map []
+  `(def color-map
+     ~(into {}
+            (for [col awt-colors]
+              [col
+               `(. Color ~(symbol (constant-name col)))]))))
+
+(def-color-map)
+
+(defn double-as-float [x]
+  (if (instance? Double x)
+    (float x)
+    x))
+
+(defn as-color [col]
+  (cond (keyword? col)        (color-map col)
+        (number? col)         (let [col (double-as-float col)]
+                                (Color. col col col))
+        (sequential? col)     (let [[r g b alpha] (map double-as-float col)]
+                                (if alpha
+                                  (Color. r g b alpha)
+                                  (Color. r g b)))
+        (instance? Color col) col
+        :else                 (fail "Invalid color:" col)))
+
 (defn close [o]
   (conf! o :close true))
 
 (defn open [o]
   (conf! o :open true))
+
+(defn value [o]
+  (get o :value))
+
+(defn set-value [o val]
+  (conf! o :value val))
 
 (defmethod set [Object :args]
   [o _ args]
@@ -287,10 +324,21 @@
   (doseq [[name panel] (partition 2 kvs)]
     (.addTab o (translate name) panel)))
 
+(defmethod set [JTabbedPane :tab-placement]
+  [o _ pos]
+  (.setTabPlacement o (case pos
+                            :top    SwingConstants/TOP
+                            :left   SwingConstants/LEFT
+                            :right  SwingConstants/RIGHT
+                            :bottom SwingConstants/BOTTOM)))
+
 (defn select-tab [tabs key]
   (invoke-later
    (let [key->id (:key->id (m/meta tabs))]
      (.setSelectedIndex tabs (key->id key)))))
+
+(defn add-tab [tabs key panel]
+  )
 
 (defmethod set [Component :border]
   [o _ borders]
@@ -355,7 +403,6 @@
 
 (defmethod on [JTextComponent :change]
   [o _ handler]
-
   (with-handlers [handler]
     (.. o
         getDocument
@@ -402,12 +449,12 @@
 (defmethod set [Component :background]
   [o _ color]
   (when color
-    (.setBackground o color)))
+    (.setBackground o (as-color color))))
 
 (defmethod set [Component :foreground]
   [o _ color]
   (when color
-    (.setForeground o color)))
+    (.setForeground o (as-color color))))
 
 (defmethod on [Component :popup]
   [o _  {:keys [hide show cancel]}]
