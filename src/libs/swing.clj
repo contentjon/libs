@@ -354,17 +354,18 @@
   (.getTabComponentAt tabs (tab-index tabs key)))
 
 (defn get-current-tab [tabs]
-  (when-let [index (.getSelectedIndex tabs)]
-    (.getTabComponentAt tabs index)))
+  (let [index (.getSelectedIndex tabs)]
+    (when-not (= -1 index)
+      (.getTabComponentAt tabs index))))
 
 (defn remove-tab [tabs key]
-  (invoke-later
+  (invoke-and-wait
    (.removeTabAt tabs (tab-index tabs key))))
 
 (defn add-tab [o & tab-descr]
   (let-args [[icon tooltip args & more] tab-descr]
     (let [[key panel] (if (empty? args) more args)]
-      (invoke-later
+      (invoke-and-wait
        (.addTab o (translate key) icon panel tooltip)
        (when-let [render-tab (:tab-renderer (m/meta o))]
          (.setTabComponentAt o (tab-index o key) (render-tab o key)))))))
@@ -384,6 +385,10 @@
 (defmethod set [Component :titled-border]
   [o _ text]
   (.setBorder o (BorderFactory/createTitledBorder (translate text))))
+
+(defmethod set [Component :line-border]
+  [o _ color]
+  (.setBorder o (BorderFactory/createLineBorder (as-color color))))
 
 (defmethod set [JSplitPane :orientation]
   [o _ orientation]
