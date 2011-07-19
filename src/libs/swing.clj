@@ -73,9 +73,11 @@
                         SwingUtilities
                         ToolTipManager
                         UIManager)
-           (javax.swing.event DocumentListener
+           (javax.swing.event ChangeListener
+                              DocumentListener
                               ListSelectionListener
                               PopupMenuListener)
+           (javax.swing.plaf.basic BasicButtonUI)
            (javax.swing.table AbstractTableModel
                               DefaultTableModel
                               DefaultTableCellRenderer)
@@ -86,6 +88,11 @@
 
 (defmacro invoke-later [& body]
   `(SwingUtilities/invokeLater
+    (fn []
+      ~@body)))
+
+(defmacro invoke-and-wait [& body]
+  `(SwingUtilities/invokeAndWait
     (fn []
       ~@body)))
 
@@ -104,6 +111,16 @@
 
 (defn button [& args]
   (config (JButton.) args))
+
+(deff hover-button [hover-icon & args]
+  (doto (JButton.)
+    (.setUI (BasicButtonUI.))
+    (.setContentAreaFilled false)
+    (.setFocusable false)
+    (.setBorder (BorderFactory/createEtchedBorder))
+    (.setBorderPainted false)
+    ; TODO: use hover-icon
+    (config args)))
 
 (defn check-box [& args]
   (config (JCheckBox.) args))
@@ -134,7 +151,6 @@
 
 (deff tabs [tab-renderer & args]
   (let [tabbed-pane (JTabbedPane.)]
-    (m/assoc-meta! tabbed-pane :key->id {})
     (when tab-renderer
       (m/assoc-meta! tabbed-pane :tab-renderer tab-renderer))
     (config tabbed-pane args)))
@@ -322,21 +338,36 @@
                             :right  SwingConstants/RIGHT
                             :bottom SwingConstants/BOTTOM)))
 
+(defn tab-index [tabs key]
+  (let [title (translate key)
+        res   (find-by #(= title (.getTitleAt tabs %))
+                       (range (.getTabCount tabs)))]
+    (if res
+      res
+      (fail "tab doesn't exist:" key))))
+
 (defn select-tab [tabs key]
   (invoke-later
-   (let [key->id (:key->id (m/meta tabs))]
-     (.setSelectedIndex tabs (key->id key)))))
+   (.setSelectedIndex tabs (tab-index tabs key))))
 
-(def close-icon
-  (javax.swing.plaf.metal.MetalIconFactory/getInternalFrameCloseIcon 16))
+(defn get-tab [tabs key]
+  (.getTabComponentAt tabs (tab-index tabs key)))
+
+(defn get-current-tab [tabs]
+  (when-let [index (.getSelectedIndex tabs)]
+    (.getTabComponentAt tabs index)))
+
+(defn remove-tab [tabs key]
+  (invoke-later
+   (.removeTabAt tabs (tab-index tabs key))))
 
 (defn add-tab [o & tab-descr]
   (let-args [[icon tooltip args & more] tab-descr]
     (let [[key panel] (if (empty? args) more args)]
-      (m/update-in-meta! o [:key->id] assoc key (.getTabCount o))
-      (if tooltip              ; icon may be null
-        (.addTab o (translate key) icon panel tooltip)
-        (.addTab o (translate key) icon panel)))))
+      (invoke-later
+       (.addTab o (translate key) icon panel tooltip)
+       (when-let [render-tab (:tab-renderer (m/meta o))]
+         (.setTabComponentAt o (tab-index o key) (render-tab o key)))))))
 
 (defmethod put [JTabbedPane IPersistentVector]
   [o tab-descr]
@@ -402,6 +433,12 @@
 (defmethod get [JCheckBox :value]
   [o _]
   (.isSelected o val))
+
+(defmethod on [Component :change]
+  [o _ handler]
+  (with-handlers [handler]
+    (.addChangeListener o (reify ChangeListener
+                            (stateChanged [_ evt] (handler evt))))))
 
 (defmethod on [JTextComponent :change]
   [o _ handler]
@@ -722,8 +759,12 @@
   (doseq [[key handler] handlers]
     (add-key-handler o key handler)))
 
-(defn as-dimension [[width height]]
-  (Dimension. width height))
+(defn as-dimension [size]
+  (cond
+   (number? size)             (Dimension. size size)
+   (sequential? size)         (Dimension. (first size) (second size))
+   (instance? Dimension size) size
+   :else                      (fail "Can't treat" (class size) "as dimension")))
 
 (defmethod set [Component :min-size]
   [o _ sz]

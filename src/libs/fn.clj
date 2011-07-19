@@ -6,6 +6,10 @@
   [& args]
   `(-> ~(last args) ~@(butlast args)))
 
+(defn find-by [f coll]
+  (some #(when (f %) %)
+        coll))
+
 (defn or-fn [& preds]
   (fn [x]
     (some #(% x)
