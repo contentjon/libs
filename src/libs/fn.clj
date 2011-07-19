@@ -1,8 +1,10 @@
 (ns libs.fn
   (:use (libs debug)))
 
-(defn funcall [f arg]
-  (f arg))
+(defmacro ->*
+  "Like ->, but for use (only) inside ->>"
+  [& args]
+  `(-> ~(last args) ~@(butlast args)))
 
 (defn or-fn [& preds]
   (fn [x]
