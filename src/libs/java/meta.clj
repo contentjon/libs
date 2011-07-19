@@ -24,6 +24,9 @@
 (defn update-meta! [o f & args]
   (set-meta! o (apply f (meta o) args)))
 
+(defn update-in-meta! [o path f & args]
+  (apply update-meta! o update-in path f args))
+
 (defn assoc-meta! [o & keyvals]
   (update-meta! o #(apply assoc % keyvals)))
 
