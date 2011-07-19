@@ -15,7 +15,8 @@
   (:import (clojure.lang Keyword
                          Fn
                          IFn
-                         IPersistentMap)
+                         IPersistentMap
+                         IPersistentVector)
            (java.awt BorderLayout
                      Color
                      Component
@@ -131,16 +132,12 @@
 (defn splitter [& args]
   (config (JSplitPane.) args))
 
-(deff tabs [args & more]
-  (let [key->id (->> args
-                     (partition 2)
-                     (map first)
-                     (map-indexed (fn [i key]
-                                    [key i]))
-                     (into {}))
-        tabbed-pane (JTabbedPane.)]
-    (m/assoc-meta! tabbed-pane :key->id key->id)
-    (config tabbed-pane (list* :args args more))))
+(deff tabs [tab-renderer & args]
+  (let [tabbed-pane (JTabbedPane.)]
+    (m/assoc-meta! tabbed-pane :key->id {})
+    (when tab-renderer
+      (m/assoc-meta! tabbed-pane :tab-renderer tab-renderer))
+    (config tabbed-pane args)))
 
 (defn text-area [& args]
   (config (JTextArea. 3 15) args))
@@ -244,21 +241,19 @@
 
 (def-color-map)
 
-(defn double-as-float [x]
-  (if (instance? Double x)
-    (float x)
-    x))
-
 (defn as-color [col]
-  (cond (keyword? col)        (color-map col)
-        (number? col)         (let [col (double-as-float col)]
-                                (Color. col col col))
-        (sequential? col)     (let [[r g b alpha] (map double-as-float col)]
-                                (if alpha
-                                  (Color. r g b alpha)
-                                  (Color. r g b)))
-        (instance? Color col) col
-        :else                 (fail "Invalid color:" col)))
+  (let [double-as-float #(if (instance? Double %)
+                           (float %)
+                           %)]
+    (cond (keyword? col)        (color-map col)
+          (number? col)         (let [col (double-as-float col)]
+                                  (Color. col col col))
+          (sequential? col)     (let [[r g b alpha] (map double-as-float col)]
+                                  (if alpha
+                                    (Color. r g b alpha)
+                                    (Color. r g b)))
+          (instance? Color col) col
+          :else                 (fail "Invalid color:" col))))
 
 (defn close [o]
   (conf! o :close true))
@@ -319,11 +314,6 @@
   [o _ tooltip]
   (.setToolTipText o (translate tooltip)))
 
-(defmethod set [JTabbedPane :args]
-  [o _ kvs]
-  (doseq [[name panel] (partition 2 kvs)]
-    (.addTab o (translate name) panel)))
-
 (defmethod set [JTabbedPane :tab-placement]
   [o _ pos]
   (.setTabPlacement o (case pos
@@ -337,8 +327,20 @@
    (let [key->id (:key->id (m/meta tabs))]
      (.setSelectedIndex tabs (key->id key)))))
 
-(defn add-tab [tabs key panel]
-  )
+(def close-icon
+  (javax.swing.plaf.metal.MetalIconFactory/getInternalFrameCloseIcon 16))
+
+(defn add-tab [o & tab-descr]
+  (let-args [[icon tooltip args & more] tab-descr]
+    (let [[key panel] (if (empty? args) more args)]
+      (m/update-in-meta! o [:key->id] assoc key (.getTabCount o))
+      (if tooltip              ; icon may be null
+        (.addTab o (translate key) icon panel tooltip)
+        (.addTab o (translate key) icon panel)))))
+
+(defmethod put [JTabbedPane IPersistentVector]
+  [o tab-descr]
+  (apply add-tab o tab-descr))
 
 (defmethod set [Component :border]
   [o _ borders]
