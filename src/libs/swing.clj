@@ -418,6 +418,9 @@
   [o _ handler]
   (add-action-handler o (as-handler handler)))
 
+(defn append-line [text-box text]
+  (invoke-later (.append text-box (str text "\n"))))
+
 (defmethod get [JTextComponent :value]
   [o _]
   (.getText o))
