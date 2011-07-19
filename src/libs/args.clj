@@ -67,9 +67,9 @@
             (recur more (assoc options key val))
             [options remaining-args]))))))
 
-(defmacro deff
-  "Defines a function with flexible keyword argument parsing"
-  [name args & body]
+(defmacro let-args
+  "Destructures args using flexible arg parsing"
+  [[args argseq] & body]
   (let [[and-sym rest-args-sym] (take-last 2 args)
         [key-args rest-args-sym] (if (= and-sym '&)
                                    [(drop-last 2 args) rest-args-sym]
@@ -80,18 +80,26 @@
                                [(conj key-args 'args)
                                 (remove #{'arg} key-args)]
                                [key-args key-args])]
-    `(defn ~name [& args#]
-       (let [[~options-sym
-              ~rest-args-sym] (parse-options
-                               ~(vec (map keyword key-args))
-                               (parse-args args#))
-              {:keys ~bind-args} ~options-sym]
-         ~(if arg?
-            `(let [{args# :args} ~options-sym
-                   ~'arg (first args#)]
-               (when-not (= (count args#) 1)
-                 (throw (IllegalArgumentException.
-                         (str '~name " expects a single arg, but got " (vec args#)))))
-               ~@body)
-            `(do ~@body))))))
+    `(let [args# ~argseq
+           [~options-sym
+            ~rest-args-sym] (parse-options
+                             ~(vec (map keyword key-args))
+                             (parse-args args#))
+            {:keys ~bind-args} ~options-sym]
+       ~(if arg?
+          `(let [{args# :args} ~options-sym
+                 ~'arg (first args#)]
+             (when-not (= (count args#) 1)
+               (throw (IllegalArgumentException.
+                       (str "Flexarg spec expects a single arg, but got "
+                            (vec args#)))))
+             ~@body)
+          `(do ~@body)))))
+
+(defmacro deff
+  "Defines a function with flexible keyword argument parsing"
+  [name args & body]
+  `(defn ~name [& args#]
+     (let-args [~args args#]
+       ~@body)))
 
