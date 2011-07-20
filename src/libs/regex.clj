@@ -49,7 +49,7 @@
 
 (def numeric (char-range \0 \9))
 
-(def integer (at-least-one numeric))
+(def integer (group (maybe \-) (at-least-one numeric)))
 
 (def floating (one-of integer
                       (group (maybe "-")
