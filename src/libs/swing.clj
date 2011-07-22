@@ -87,6 +87,7 @@
        tables
        tabs
        widgets
+       lists
        getters
        setters
        putters
