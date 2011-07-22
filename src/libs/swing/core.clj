@@ -1,14 +1,18 @@
 (in-ns 'libs.swing)
 
 (defmacro invoke-later [& body]
-  `(SwingUtilities/invokeLater
-    (fn []
-      ~@body)))
+  `(if (SwingUtilities/isEventDispatchThread)
+     (do ~@body)
+     (SwingUtilities/invokeLater
+      (fn []
+        ~@body))))
 
 (defmacro invoke-and-wait [& body]
-  `(SwingUtilities/invokeAndWait
-    (fn []
-      ~@body)))
+  `(if (SwingUtilities/isEventDispatchThread)
+     (do ~@body)
+     (SwingUtilities/invokeAndWait
+      (fn []
+        ~@body))))
 
 (defn conf! [o & args]
   (invoke-later (config o args))
