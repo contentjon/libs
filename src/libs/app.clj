@@ -31,3 +31,6 @@
 
 (defn app-file [path]
   (make-file (app-dir) path))
+
+(defn app-log [name]
+  (app-file (str name ".log")))
