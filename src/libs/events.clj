@@ -8,6 +8,15 @@
 (defmacro defhandler [receiver key args & rest]
   `(defmethod handle [~receiver ~key] [_# _# ~@args] ~@rest))
 
-(defmethod handle :default
+(defmulti handle-default (fn [receiver & _] receiver))
+
+(defmacro def-default-handler [receiver args & rest]
+  `(defmethod handle-default ~receiver [_# ~@args] ~@rest))
+
+(defmethod handle-default :default
   [receiver key & _]
   (debug "unhandled event" (m/type receiver) key))
+
+(defmethod handle :default
+  [receiver & args]
+  (apply handle-default receiver args))
