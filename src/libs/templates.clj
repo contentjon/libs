@@ -55,6 +55,13 @@
                 (dissoc nil)
                 (update-with postprocessors))))))))
 
+(def not-nil? (complement nil?))
+
+(defn parse-from-templates [templates block]
+  (let [results (map parse-from-template templates block)]
+    (when (every? not-nil? results)
+      (apply merge results))))
+
 (defn template-parser [templ]
   (fn [s]
     (parse-from-template templ s)))
