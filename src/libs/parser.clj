@@ -66,6 +66,12 @@
 
 (def pand and-fn)
 
+(defn pmaybe [p]
+  (fn [stream]
+    (if-let [res (p stream)]
+      res
+      [nil stream])))
+
 (defn surround [p before after]
   (parser [_ before
            res p

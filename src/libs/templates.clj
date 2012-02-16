@@ -24,7 +24,7 @@
                templ))))
 
 (defn parse-from-template [templ s]
-  (when-not (nil? templ)
+  (when-not (or (nil? templ) (nil? s))
     (let [splice (fn splice [xs]
                    (apply concat
                           (map #(if (seq? %)
@@ -61,6 +61,16 @@
   (let [results (map parse-from-template templates block)]
     (when (every? not-nil? results)
       (apply merge results))))
+
+(defn to-parser
+  ([template]
+     (fn [block]
+       (when-let [res (parse-from-template template (first block))]
+         [res (next block)])))
+  ([template & more]
+     (fn [block]
+       (when-let [res (parse-from-templates (list* template more) block)]
+         [res (drop (inc (count more)) block)]))))
 
 (defn template-parser [templ]
   (fn [s]
