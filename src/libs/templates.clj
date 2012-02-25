@@ -34,7 +34,7 @@
           spliced-templ (splice templ)
           compiled-templ (map #(cond
                                 (vector? %) (named (first %) (second %))
-                                (keyword? %) (named % (at-least-one non-ws))
+                                (keyword? %) (named % word)
                                 :else %)
                               spliced-templ)]
       (when-let

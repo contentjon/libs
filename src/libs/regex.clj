@@ -61,6 +61,8 @@
 
 (def non-ws (literal-regex #"\S"))
 
+(def word (at-least-one non-ws))
+
 (deftest test-regexes
   (is (= (match-re
           (regex (named-group :rank (repeated numeric 1 2) (one-of "d" "k")))
