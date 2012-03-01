@@ -1,5 +1,8 @@
 (ns libs.maps)
 
+(defn take-keys [m keys]
+  (zipmap keys (map m keys)))
+
 (defn invert-map [m]
   (into {} (map (fn [[x y]]
                   [y x])
