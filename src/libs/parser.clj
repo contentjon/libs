@@ -87,6 +87,11 @@
 (defn at-least-one [p]
   (parser [fst p
            rst (many p)]
-    (cons fst rst)))
+          (cons fst rst)))
+
+(defn at-least [p n]
+  (parser [fst (times p n)
+           rst (many p)]
+          (concat fst rst)))
 
 (def anything (many any))
